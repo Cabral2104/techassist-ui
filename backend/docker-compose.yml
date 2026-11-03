@@ -1,0 +1,27 @@
+name: techassist-ai
+
+services:
+  techassist-postgres:
+    image: postgres:16-alpine
+    container_name: techassist_postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: techassist_user
+      POSTGRES_PASSWORD: techassist_password
+      POSTGRES_DB: techassist_db
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      # Se expone en el puerto 5433 del host para NO causar conflicto con Chess Docker DB (puerto 5432)
+      - "5433:5432"
+    volumes:
+      - techassist_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U techassist_user -d techassist_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  techassist_pgdata:
+    name: techassist_pgdata_volume
+

@@ -1,32 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatArea } from './components/ChatArea';
 import { ChatInput } from './components/ChatInput';
 import { AuthModal } from './components/AuthModal';
 import { INITIAL_CONVERSATIONS, MOCK_USER } from './data/mockData';
 
-/**
- * ============================================================================
- * GUÍA DE INTEGRACIÓN CON API PYTHON (FastAPI / Flask / Django Ninja)
- * ============================================================================
- * Para conectar este frontend con tu backend en Python:
- * 
- * 1. Define tu endpoint en FastAPI:
- *    @app.post("/api/chat")
- *    async def handle_chat(request: ChatRequest):
- *        # Conexión con LangChain / LlamaIndex / Gemini / OpenAI
- *        response = await ai_service.diagnose_incident(request.messages)
- *        return {"reply": response}
- * 
- * 2. En la función `sendQueryToPythonAPI` de este archivo:
- *    Descomenta la llamada `fetch()` y reemplaza la simulación.
- * ============================================================================
- */
+const API_BASE_URL = 'http://localhost:8000';
 
 export default function App() {
-  // 1. Estado de conversaciones y chat activo (Inicia con la conversación de falla de red APIPA)
+  // 1. Estado de conversaciones y chat activo (IDs numéricos autoincrementales 1, 2, 3...)
   const [chats, setChats] = useState(INITIAL_CONVERSATIONS);
-  const [currentChatId, setCurrentChatId] = useState('chat-network-apipa');
+  const [currentChatId, setCurrentChatId] = useState(1);
 
   // 2. Estado de interfaz (Sidebar y Modal de Autenticación)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -40,6 +24,25 @@ export default function App() {
 
   // 5. Estado de texto prellenado para el input (al hacer clic en atajos)
   const [prefilledInput, setPrefilledInput] = useState('');
+
+  // Cargar conversaciones activas (status = 1) desde PostgreSQL al iniciar
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/conversations`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setChats(data);
+            setCurrentChatId(data[0].id);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend aún no disponible, mostrando estado inicial local:', err.message);
+      }
+    };
+    fetchConversations();
+  }, []);
 
   // Obtener la conversación actual seleccionada
   const currentChat = chats.find((c) => c.id === currentChatId) || null;
@@ -61,12 +64,21 @@ export default function App() {
   };
 
   /**
-   * Eliminar una consulta del historial
+   * Eliminar una consulta del historial (Borrado Lógico status = 0 en PostgreSQL)
    */
-  const handleDeleteChat = (chatId) => {
+  const handleDeleteChat = async (chatId) => {
     setChats((prev) => prev.filter((c) => c.id !== chatId));
     if (currentChatId === chatId) {
       setCurrentChatId(null);
+    }
+
+    try {
+      const emailParam = encodeURIComponent(currentUser?.email || 'c.cabral@techassist.corp');
+      await fetch(`${API_BASE_URL}/api/conversations/${chatId}?user_email=${emailParam}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('Error aplicando borrado lógico en PostgreSQL:', err);
     }
   };
 
@@ -87,105 +99,25 @@ export default function App() {
   };
 
   /**
-   * Función para conectar con el backend en Python.
-   * Actualmente contiene un mock inteligente que genera respuestas realistas de soporte TI.
+   * Función que envía la consulta al servicio Backend Python (FastAPI + PostgreSQL + Algoritmo Genético)
    */
-  const sendQueryToPythonAPI = async (chatHistory, userMessage) => {
-    /* 
-    // DESCOMENTAR PARA CONEXIÓN REAL CON FASTAPI / FLASK:
-    try {
-      const response = await fetch('http://localhost:8000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          history: chatHistory,
-          message: userMessage,
-          user: currentUser
-        })
-      });
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error al conectar con la API de Python:", error);
-      throw error;
-    }
-    */
+  const sendQueryToPythonAPI = async (conversationId, userMessage) => {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        user_id: typeof currentUser?.id === 'number' ? currentUser.id : 1,
+        user_email: currentUser?.email || 'c.cabral@techassist.corp',
+        message: userMessage,
+      }),
+    });
 
-    // Simulación de respuesta con delay natural de procesamiento
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-
-    const lower = userMessage.text.toLowerCase();
-
-    // Lógica contextual simulada según el contenido del mensaje
-    if (lower.includes('estática') || lower.includes('ip estática') || lower.includes('192.168.1.240')) {
-      return {
-        content: `### Procedimiento para Asignación de IP Estática Temporal
-Para aislar si el problema es exclusivamente del servidor DHCP o de la tarjeta de red, configuraremos temporalmente una IP estática fuera del rango de conflicto:`,
-        statusBadge: 'Configuración Manual de IP',
-        statusType: 'info',
-        codeBlocks: [
-          {
-            language: 'powershell',
-            title: 'Configurar IP estática con PowerShell (Admin)',
-            code: `New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress "192.168.1.240" -PrefixLength 24 -DefaultGateway "192.168.1.1"
-Set-DnsClientServerAddress -InterfaceAlias "Ethernet" -ServerAddresses ("192.168.1.1", "1.1.1.1")`
-          }
-        ],
-        contentContinuation: `Una vez aplicada, intenta hacer ping al gateway (\`192.168.1.1\`). Si responde, el cable y el switch funcionan y el fallo reside 100% en el agente DHCP Relay o servidor DHCP.`,
-        suggestedActions: [
-          'Revertir a DHCP automático tras prueba',
-          'Comprobar reservas DHCP en el Router Core'
-        ]
-      };
+    if (!response.ok) {
+      throw new Error(`Error HTTP ${response.status} al consultar el motor de IA.`);
     }
 
-    if (lower.includes('bsod') || lower.includes('pantalla azul') || lower.includes('dmp') || lower.includes('hardware')) {
-      return {
-        content: `### Análisis de Volcado de Memoria (BSOD)
-Para analizar la causa del kernel panic y aislar el controlador o hardware defectuoso:`,
-        statusBadge: 'Triaje de Hardware & Kernel',
-        statusType: 'warning',
-        codeBlocks: [
-          {
-            language: 'powershell',
-            title: 'Localizar y listar últimos volcados de memoria',
-            code: `Get-ChildItem -Path "C:\\Windows\\Minidump" -Filter "*.dmp" | Sort-Object LastWriteTime -Descending | Select-Object -First 5 Name, Length, LastWriteTime`
-          }
-        ],
-        contentContinuation: `Recomiendo abrir el archivo en **WinDbg** y ejecutar el análisis automático:
-\`\`\`
-!analyze -v
-\`\`\`
-Revisa los parámetros \`IMAGE_NAME\` y \`FAILURE_BUCKET_ID\` para identificar el driver (.sys) causante.`,
-        suggestedActions: [
-          'Ejecutar diagnóstico de memoria mdsched.exe',
-          'Comprobar salud de disco con CrystalDisk / smartctl'
-        ]
-      };
-    }
-
-    // Respuesta genérica inteligente para soporte TI L2
-    return {
-      content: `### Evaluación Técnica del Incidente
-He analizado los parámetros de tu solicitud: **"${userMessage.text.slice(0, 60)}..."**
-
-Procederemos a recopilar la telemetría del sistema operativo para diagnosticar el comportamiento anómalo. Ejecuta el siguiente diagnóstico general:`,
-      statusBadge: 'Análisis de Incidente en Curso',
-      statusType: 'info',
-      codeBlocks: [
-        {
-          language: 'powershell',
-          title: 'Auditoría de eventos críticos recientes (Últimas 24h)',
-          code: `Get-WinEvent -FilterHashtable @{LogName='System'; Level=1,2; StartTime=(Get-Date).AddDays(-1)} -MaxEvents 15 | Select-Object TimeCreated, Id, Message | Format-Table -Wrap`
-        }
-      ],
-      contentContinuation: `Por favor adjunta la salida o los códigos de Event ID reportados para correlacionar la falla con la base de conocimientos de TI.`,
-      suggestedActions: [
-        'Exportar logs a archivo de texto',
-        'Reiniciar subsistema afectado',
-        'Escalar a Soporte Nivel 3'
-      ]
-    };
+    return await response.json();
   };
 
   /**
@@ -194,25 +126,22 @@ Procederemos a recopilar la telemetría del sistema operativo para diagnosticar 
   const handleSendMessage = async ({ text, attachment }) => {
     if (!text && !attachment) return;
 
-    // Formatear hora actual (HH:MM AM/PM)
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Mensaje del usuario
-    const newUserMessage = {
-      id: `msg-user-${Date.now()}`,
+    const optimisticUserMessage = {
+      id: Date.now(),
       sender: 'user',
       timestamp: timeString,
-      content: text + (attachment ? `\n\n*[Archivo adjunto: ${attachment.name} (${attachment.size})]*` : '')
+      content: text + (attachment ? `\n\n*[Archivo adjunto: ${attachment.name} (${attachment.size})]*` : ''),
     };
 
-    let activeId = currentChatId;
+    const existingConversationId = currentChatId;
+    const tempChatId = -Date.now();
 
-    // Si estábamos en Estado Vacío (Nuevo Chat), creamos una nueva conversación en el estado
-    if (!activeId) {
-      const newChatId = `chat-${Date.now()}`;
+    if (!existingConversationId) {
       const newChatObj = {
-        id: newChatId,
+        id: tempChatId,
         title: text.length > 40 ? text.slice(0, 38) + '...' : text || 'Nueva Consulta Técnica',
         category: 'Incidente',
         period: 'Hoy',
@@ -220,58 +149,64 @@ Procederemos a recopilar la telemetría del sistema operativo para diagnosticar 
         updatedAt: timeString,
         status: 'in_progress',
         summary: text,
-        messages: [newUserMessage]
+        messages: [optimisticUserMessage],
       };
 
       setChats((prev) => [newChatObj, ...prev]);
-      setCurrentChatId(newChatId);
-      activeId = newChatId;
+      setCurrentChatId(tempChatId);
     } else {
-      // Agregar mensaje a la conversación existente
       setChats((prev) =>
         prev.map((c) =>
-          c.id === activeId
-            ? { ...c, messages: [...c.messages, newUserMessage], updatedAt: timeString }
+          c.id === existingConversationId
+            ? { ...c, messages: [...c.messages, optimisticUserMessage], updatedAt: timeString }
             : c
         )
       );
     }
 
-    // Limpiar input prellenado
     setPrefilledInput('');
-
-    // Iniciar animación de "Pensando..." de la IA
     setIsGenerating(true);
 
     try {
-      // Llamar a la función que interactúa con la API de Python
-      const aiResponse = await sendQueryToPythonAPI(
-        currentChat ? currentChat.messages : [],
-        { text, attachment }
-      );
+      const apiData = await sendQueryToPythonAPI(existingConversationId, { text, attachment });
+      const realConvId = apiData.conversation_id;
+      const persistedUserMsg = apiData.user_message;
+      const assistantMessage = apiData.assistant_message;
 
-      // Crear mensaje de respuesta del asistente
-      const newAssistantMessage = {
-        id: `msg-ai-${Date.now()}`,
-        sender: 'assistant',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        content: aiResponse.content,
-        statusBadge: aiResponse.statusBadge,
-        statusType: aiResponse.statusType || 'info',
-        codeBlocks: aiResponse.codeBlocks,
-        contentContinuation: aiResponse.contentContinuation,
-        suggestedActions: aiResponse.suggestedActions
-      };
-
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === activeId
-            ? { ...c, messages: [...c.messages, newAssistantMessage] }
-            : c
-        )
-      );
+      if (!existingConversationId) {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === tempChatId
+              ? {
+                  ...c,
+                  id: realConvId,
+                  title: apiData.conversation_title || c.title,
+                  category: apiData.category || c.category,
+                  messages: [persistedUserMsg, assistantMessage],
+                }
+              : c
+          )
+        );
+        setCurrentChatId(realConvId);
+      } else {
+        setChats((prev) =>
+          prev.map((c) =>
+            c.id === existingConversationId
+              ? {
+                  ...c,
+                  category: apiData.category || c.category,
+                  messages: [
+                    ...c.messages.slice(0, -1),
+                    persistedUserMsg,
+                    assistantMessage,
+                  ],
+                }
+              : c
+          )
+        );
+      }
     } catch (err) {
-      console.error('Error generando respuesta:', err);
+      console.error('Error conectando con el servicio Backend en puerto 8000:', err);
     } finally {
       setIsGenerating(false);
     }
@@ -291,7 +226,6 @@ Procederemos a recopilar la telemetría del sistema operativo para diagnosticar 
 
   return (
     <div className="flex h-screen w-full bg-slate-950 text-slate-100 overflow-hidden font-sans select-none">
-      
       {/* 1. Barra Lateral Izquierda (Colapsable) */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -308,8 +242,6 @@ Procederemos a recopilar la telemetría del sistema operativo para diagnosticar 
 
       {/* 2. Área Central (Header + Mensajes + Input de Chat) */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        
-        {/* Vista Central (Estado Vacío vs Conversación Activa) */}
         <ChatArea
           currentChat={currentChat}
           currentUser={currentUser}
@@ -320,7 +252,6 @@ Procederemos a recopilar la telemetría del sistema operativo para diagnosticar 
           isSidebarOpen={isSidebarOpen}
         />
 
-        {/* Barra de Entrada Flotante Inferior */}
         <ChatInput
           onSendMessage={handleSendMessage}
           isGenerating={isGenerating}
@@ -339,7 +270,6 @@ Procederemos a recopilar la telemetría del sistema operativo para diagnosticar 
         onLoginSuccess={handleLoginSuccess}
         currentUser={currentUser}
       />
-
     </div>
   );
 }

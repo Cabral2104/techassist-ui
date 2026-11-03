@@ -6,7 +6,7 @@
  */
 
 export const MOCK_USER = {
-  id: "tech-042",
+  id: 1,
   name: "Carlos Cabral",
   email: "c.cabral@techassist.corp",
   role: "Especialista de Soporte TI (N2)",
@@ -19,7 +19,7 @@ export const MOCK_USER = {
 
 export const INITIAL_CONVERSATIONS = [
   {
-    id: "chat-network-apipa",
+    id: 1,
     title: "Falla de red: IP APIPA 169.254.x.x en PC-Ventas-04",
     category: "Redes",
     period: "Hoy",
@@ -29,13 +29,13 @@ export const INITIAL_CONVERSATIONS = [
     summary: "Estación de trabajo sin acceso a ERP tras recibir dirección 169.254.88.14 (APIPA).",
     messages: [
       {
-        id: "msg-1",
+        id: 1,
         sender: "user",
         timestamp: "10:15 AM",
         content: "Hola TechAssist. Tengo un equipo crítico en la sucursal de ventas (`PC-VENTAS-04`) que perdió comunicación con la red local y con internet. El usuario no puede entrar al ERP ni mandar trabajos a las impresoras de red. Ya reiniciaron el equipo pero sigue igual."
       },
       {
-        id: "msg-2",
+        id: 2,
         sender: "assistant",
         timestamp: "10:16 AM",
         statusBadge: "Triaje Inicial",
@@ -53,7 +53,7 @@ Por favor, solicita al usuario o ejecuta vía consola remota el siguiente comand
         footerNote: "Presta especial atención al sufijo DNS específico para la conexión, estado de DHCP habilitado y dirección IPv4."
       },
       {
-        id: "msg-3",
+        id: 3,
         sender: "user",
         timestamp: "10:20 AM",
         content: `Ejecuté el comando en la máquina. La salida indica:
@@ -72,7 +72,7 @@ Paquetes: enviados = 4, recibidos = 0, perdidos = 4 (100% perdidos)
 ¿Qué me recomiendas hacer ahora?`
       },
       {
-        id: "msg-4",
+        id: 4,
         sender: "assistant",
         timestamp: "10:22 AM",
         statusBadge: "Diagnóstico APIPA Confirmado",
@@ -122,7 +122,7 @@ Si \`ipconfig /renew\` arroja un error de *"No se puede contactar al servidor DH
     ]
   },
   {
-    id: "chat-bsod-update",
+    id: 2,
     title: "Reinicio en bucle tras actualización KB5034441",
     category: "Hardware/SO",
     period: "Hoy",
@@ -133,7 +133,7 @@ Si \`ipconfig /renew\` arroja un error de *"No se puede contactar al servidor DH
     messages: []
   },
   {
-    id: "chat-wireguard-vpn",
+    id: 3,
     title: "Configuración VPN WireGuard en nodo remoto",
     category: "Redes",
     period: "Semana pasada",
@@ -144,7 +144,7 @@ Si \`ipconfig /renew\` arroja un error de *"No se puede contactar al servidor DH
     messages: []
   },
   {
-    id: "chat-sql-disk-alert",
+    id: 4,
     title: "Alerta de espacio en disco C: Servidor SQL-PROD",
     category: "Servidores",
     period: "Semana pasada",
@@ -155,7 +155,7 @@ Si \`ipconfig /renew\` arroja un error de *"No se puede contactar al servidor DH
     messages: []
   },
   {
-    id: "chat-ad-credentials",
+    id: 5,
     title: "Restablecimiento de credenciales Active Directory",
     category: "Identidad",
     period: "Semana pasada",

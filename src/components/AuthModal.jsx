@@ -57,32 +57,35 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, currentUser }) {
 
     setIsLoading(true);
 
-    // Simulación de respuesta de backend API Python (ej. FastAPI / Flask)
-    setTimeout(() => {
-      setIsLoading(false);
-      const authenticatedUser = {
-        id: 'tech-042',
-        name: activeTab === 'register' ? name : (currentUser?.name || 'Carlos Cabral'),
-        email: email,
-        role: 'Especialista de Soporte TI (N2)',
-        department: 'Infraestructura & Operaciones',
-        status: 'online',
-        initials: (activeTab === 'register' ? name : (currentUser?.name || 'Carlos Cabral'))
-          .split(' ')
-          .map(n => n[0])
-          .join('')
-          .slice(0, 2)
-          .toUpperCase(),
-        tier: 'Nivel 2 - Redes & SysAdmin'
-      };
+    const endpoint = activeTab === 'login' ? '/api/auth/login' : '/api/auth/register';
+    const payload = activeTab === 'login'
+      ? { email, password }
+      : { name, email, password };
 
-      setSuccessMsg(activeTab === 'login' ? '¡Sesión iniciada correctamente!' : '¡Cuenta de técnico registrada!');
-
-      setTimeout(() => {
-        onLoginSuccess(authenticatedUser);
-        onClose();
-      }, 600);
-    }, 800);
+    fetch(`http://localhost:8000${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || 'Error al autenticar con el servicio Backend.');
+        }
+        return data;
+      })
+      .then((authenticatedUser) => {
+        setIsLoading(false);
+        setSuccessMsg(activeTab === 'login' ? '¡Sesión autenticada en PostgreSQL!' : '¡Técnico registrado con auditoría en PostgreSQL!');
+        setTimeout(() => {
+          onLoginSuccess(authenticatedUser);
+          onClose();
+        }, 500);
+      })
+      .catch((err) => {
+        setIsLoading(false);
+        setErrorMsg(err.message || 'No se pudo conectar con el servidor Backend (Puerto 8000).');
+      });
   };
 
   return (
